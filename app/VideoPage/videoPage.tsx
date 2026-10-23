@@ -1,9 +1,11 @@
 'use client';
-
+import dynamic from "next/dynamic";
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { CanvasRenderer } from '@/app/components/CanvasRenderer';
-import { useCanvasRecorder } from '@/app/hooks/useCanvasRecorder';
-import {Label, ListBox, Select} from "@heroui/react";
+import { CanvasRenderer, CanvasRendererHandle } from '@/app/components/CanvasRenderer';
+import { useVideoRecorder } from '@/app/hooks/useVideoRecorder';
+import { ListBox, Select } from "@heroui/react";
+// import Live2d from "@/app/VideoPage/live2d";
+const Live2d = dynamic(() => import("@/app/VideoPage/live2d"), { ssr: false });
 const VIDEO_SOURCES = [
   '太空站.mp4',
   '悟空.mp4',
@@ -11,60 +13,60 @@ const VIDEO_SOURCES = [
   '可爱城市.mp4',
   '几何线条.mp4',
   '公式.mp4',
+  '海风.mp4'
 ];
+
+// 占位 TTS 函数 — 替换成你的真实 TTS 接口（返回 ArrayBuffer）
+async function getTtsAudio(text: string): Promise<ArrayBuffer> {
+  // TODO: 调用你的 TTS 接口，例如：
+  // const resp = await fetch('/api/tts', { method: 'POST', body: JSON.stringify({ text }) });
+  // return await resp.arrayBuffer();
+  // 这里返回空 Buffer 先占位（录制时不会有 TTS 声音，但背景视频音轨可以录制）
+  return new ArrayBuffer(0);
+}
 
 export function VideoPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const live2dRef = useRef<any>(null);
+  const canvasRendererRef = useRef<CanvasRendererHandle>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentSource, setCurrentSource] = useState(VIDEO_SOURCES[3]);
   const [isPlaying, setIsPlaying] = useState(false);
-  const { startRecording, stopRecording, isRecording, recordingDuration } = useCanvasRecorder({
-    canvasRef,
-    videoRef,
-    width: 414,
-    height: 890,
-    fps: 30,
-    mimeType: 'video/webm; codecs=vp9',
-    autoDownload: true,
+
+  const videoRecorder = useVideoRecorder({
+    canvasRendererRef,
+    videoRef: videoRef as React.RefObject<HTMLVideoElement | null>,
   });
 
-  const live2dRef = useRef<any>(null);
+  const [ttsText, setTtsText] = useState('你好，欢迎来到我们的服务。');
+  const [isTtsPlaying, setIsTtsPlaying] = useState(false);
 
-  const handleMouseEnter = useCallback(() => {
-    live2dRef.current?.setMouse({ x: 0, y: 0 });
-  }, [live2dRef]);
+  const handleStartRecording = useCallback(async () => {
+    // 1. 调用 TTS 获取 ArrayBuffer（请替换成你自己的 TTS 接口）
+    const ttsArrayBuffer = await getTtsAudio(ttsText);
+    // 2. 开始录制（传入 TTS 音频数据 + 背景视频音轨）
+    videoRecorder.startRecording(ttsArrayBuffer);
+  }, [ttsText]);
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      live2dRef.current?.setMouse({
-        x: (e.clientX / window.innerWidth) * 2 - 1,
-        y: -(e.clientY / window.innerHeight) * 2 + 1,
-      });
-    },
-    [live2dRef]
-  );
+  const handleStopRecording = useCallback(() => {
+    videoRecorder.stopRecording();
+  }, []);
 
-  const handleTouchMove = useCallback(
-    (e: TouchEvent) => {
-      e.preventDefault();
-      live2dRef.current?.setMouse({
-        x: (e.touches[0].clientX / window.innerWidth) * 2 - 1,
-        y: -(e.touches[0].clientY / window.innerHeight) * 2 + 1,
-      });
-    },
-    [live2dRef]
-  );
-  
   return (
     <div className="flex h-dvh w-dvw overflow-hidden bg-white">
       {/* 底层视频 — 不隐藏，正常播放 */}
       <video ref={videoRef} className="w-full h-full object-cover z-0" loop autoPlay playsInline preload="metadata" src={'/backgrounds/dynamic/' + currentSource} />
 
+      <Live2d/>
+
       {/* 上层控制图层 */}
       <div className="absolute left-0 w-full h-full z-10 flex flex-col justify-between p-4">
         <div className="flex justify-between items-start">
           {/* 左上角视频源切换 */}
-          <Select value={currentSource} onChange={(v) => setCurrentSource(v)}
+          <Select value={currentSource} onChange={(key) => {
+            if (key) setCurrentSource(String(key));
+            setIsPlaying(true);
+          }}
               className="rounded px-2 py-1 focus:outline-none focus:bg-white/30 text-white" aria-label="VideoSelect"
             >
               <Select.Trigger >
@@ -91,10 +93,10 @@ export function VideoPage() {
               {isPlaying ? '⏸ 暂停' : '▶ 播放'}
             </button>
             <button
-              onClick={isRecording ? stopRecording : startRecording}
+              onClick={videoRecorder.isRecording ? handleStopRecording : handleStartRecording}
               className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
             >
-              {isRecording ? '⏹ 停止录制' : '🔴 录制'}
+              {videoRecorder.isRecording ? '⏹ 停止录制' : '🔴 录制'}
             </button>
           </div>
         </div>
@@ -112,17 +114,18 @@ export function VideoPage() {
         </div>
       </div>
 
-      {/* CanvasRenderer */}
+      {/* CanvasRenderer 负责渲染和录制 */}
       <CanvasRenderer
+        ref={canvasRendererRef}
         canvasRef={canvasRef}
         videoRef={videoRef}
         live2dRef={live2dRef}
         isPlaying={isPlaying}
-        isRecording={isRecording}
-        recordingDuration={recordingDuration}
+        isRecording={videoRecorder.isRecording}
+        recordingDuration={videoRecorder.recordingDuration}
       />
 
-      {/* 录制用 Canvas */}
+      {/* 录制用 Canvas（隐藏，尺寸与 offscreen 一致） */}
       <canvas
         ref={canvasRef}
         className="fixed left-0 top-0 w-dvw h-dvh pointer-events-none hidden"

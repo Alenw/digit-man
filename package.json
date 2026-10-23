@@ -9,18 +9,20 @@
     "lint": "eslint app/"
   },
   "dependencies": {
+    "@heroui/react": "3.2.2",
     "clsx": "^2.1.1",
-    "next": "16.2.12",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "@heroui/react": "3.2.2"
+    "next": "^16",
+    "react": "^19",
+    "react-dom": "^19",
+    "whatwg-fetch": "^3.6.20",
+    "zustand": "^5.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "26.1.1",
-    "@types/react": "19.2.17",
-    "eslint": "^9",
+    "@types/react": "^19",
+    "eslint": "^10",
     "tailwindcss": "^4",
-    "typescript": "^5.9.3"
+    "typescript": "^5"
   }
 }

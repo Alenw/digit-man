@@ -27,11 +27,8 @@
         "./*"
       ],
       "@framework/*": [
-        "./Framework/src/*"
+        "./app/live2d/Framework/src/*"
       ],
-      "@live2dCore/*": [
-        "./Core/*"
-      ]
     }
   },
   "include": [
@@ -43,6 +40,6 @@
   ],
   "exclude": [
     "node_modules",
-    "app/live2d"
+    ".next","app/live2d/Framework/src"
   ]
 }

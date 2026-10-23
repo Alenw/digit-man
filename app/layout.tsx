@@ -1,6 +1,7 @@
 
+import * as React from 'react';
 import "./globals.css";
-import Script from "next/script";
+import { Providers } from './providers';
 
 export default function RootLayout({
   children,
@@ -9,12 +10,16 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="utf-8"
     >
       <head>
-        <Script src="/Core/live2dcubismcore.min.js" strategy="beforeInteractive" />
+        {/*<script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js" />*/}
+        <script src="/Core/live2dcubismcore.min.js" />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      {/*<body className="min-h-full flex flex-col">{children}</body>*/}
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
